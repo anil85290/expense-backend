@@ -22,6 +22,7 @@ function saveUser(e) {
             console.log(result);
             if(result.status === 200){
                 alert("login successfully");
+                window.location.href = './userexpense.htm'
                 resetForm();
             }
         })

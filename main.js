@@ -6,9 +6,13 @@ app.use(cors());
 app.use(express.json());
 
 const userroutes = require('./routes/userRoute');
-app.use('/user', userroutes)
+const expenseroutes = require('./routes/expenseRoute')
+
+app.use('/user', userroutes);
+app.use('/expense', expenseroutes);
 
 sequelize.sync().then((result) => {
+    // console.log(result);
     app.listen(3000);
     
 }).catch((err) => {
