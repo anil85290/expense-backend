@@ -1,42 +1,43 @@
-const user = document.getElementById('name');
 const userEmail = document.getElementById('email');
 const userPassword = document.getElementById('password');
-const form = document.getElementById("signupForm");
+const form = document.getElementById("loginForm");
 
 form.addEventListener('submit', saveUser);
 
 function saveUser(e) {
     e.preventDefault();
     
-    if (user.value.trim() === "" || userEmail.value.trim() === "" || userPassword.value.trim() === "") {
+    if (userEmail.value.trim() === "" || userPassword.value.trim() === "") {
         alert("Please fill in all fields.");
         return;
     }
 
 
     let obj = {
-        name: user.value.trim(),
         email: userEmail.value.trim(),
         password: userPassword.value.trim()
     };
-    axios.post("http://localhost:3000/user/signup", obj)
+    axios.post("http://localhost:3000/user/login", obj)
         .then((result) => {
             console.log(result);
-            // if(result.status === 201){
-
-            // }
-            resetForm();
+            if(result.status === 200){
+                alert("login successfully");
+                resetForm();
+            }
         })
         .catch((err) => {
             console.log(err);
-            alert("user with this amail aleady exists");
+            if(err.status==400){
+                alert("incorrect password");
+                resetForm();
+            }
+            alert("email does not exist");
             resetForm();
         });
 }
 
 
 function resetForm() {
-    user.value = "";
     userEmail.value = "";
     userPassword.value = "";
 }

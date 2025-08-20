@@ -9,7 +9,6 @@ const userroutes = require('./routes/userRoute');
 app.use('/user', userroutes)
 
 sequelize.sync().then((result) => {
-    console.log(result);
     app.listen(3000);
     
 }).catch((err) => {
