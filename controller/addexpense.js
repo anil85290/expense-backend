@@ -8,7 +8,8 @@ exports.postExpense = async (req, res) => {
         const result = await Expense.create({
             amount: amount,
             description: description,
-            category: category
+            category: category,
+            userId: req.user.id
         });
         console.log(result);
         res.status(201).json(result);
@@ -19,7 +20,7 @@ exports.postExpense = async (req, res) => {
 
 exports.getall = async (req, res) => {
     try {
-        let result = await Expense.findAll();
+        let result = await Expense.findAll({where: {userId: req.user.id}});
         console.log(result);
         res.send(result);
     } catch (error) {
@@ -32,6 +33,7 @@ exports.deletebyid = (req, res) => {
     let exid= req.params.id
     console.log(exid);
     Expense.destroy({where:{
-        id: exid
+        id: exid,
+        userId: req.user.id
     }})
 };

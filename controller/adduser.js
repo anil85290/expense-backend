@@ -1,8 +1,9 @@
 const { where } = require('sequelize');
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken')
 
-exports.postUser = async (req, res) => {
+const postUser = async (req, res) => {
     const user = req.body.name;
     const email = req.body.email;
     const password = req.body.password;
@@ -24,24 +25,39 @@ exports.postUser = async (req, res) => {
     }
 };
 
-exports.login = async (req, res) => {
+const generateAccessToken = (id, user) => {
+    return jwt.sign({userID: id, name: user}, 'u8D3j#6fKq%2Rz!9sYw@5Lp^1Xv*8Nc3')
+};
+
+const login = async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
 
     try {
         const user = await User.findOne({ where: { email } });
-
+        
         if (user) {
+            console.log(user.password);
             const isMatch = await bcrypt.compare(password, user.password);
             if (isMatch) {
-                res.status(200).json({ message: 'User logged in' });
+                const token = generateAccessToken(user.id, user.name);
+                console.log(token);
+                return res.status(200).json({ token });
             } else {
-                res.status(400).json({ message: 'Password is incorrect' });
+                return res.status(400).json({ message: 'Password is incorrect' });
             }
         } else {
-            res.status(404).json({ message: 'User does not exist' });
+            return res.status(404).json({ message: 'User does not exist' });
         }
     } catch (err) {
-        res.status(500).json({ error: err.message || 'An error occurred during login' });
+        console.error('Login error:', err);
+        return res.status(500).json({ error: err.message || 'An error occurred during login' });
     }
 };
+
+module.exports = {
+    postUser,
+    login,
+    generateAccessToken
+};
+

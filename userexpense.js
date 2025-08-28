@@ -3,7 +3,7 @@ const amount = document.getElementById('amount');
 const desc = document.getElementById('description');
 const category = document.getElementById('category');
 const ul = document.getElementById('expenseList');
-
+const token = localStorage.getItem('token')
 form.addEventListener('submit', addExpense);
 
 function addExpense(e){
@@ -17,7 +17,7 @@ function addExpense(e){
         description: desc.value.trim(),
         category: category.value.trim()
     }
-    axios.post("http://localhost:3000/expense/save", obj)
+    axios.post("http://localhost:3000/expense/save", obj, {headers: {"Authorization" : token}})
         .then((result) => {
             console.log(result.data);
             showExpenses(result.data);
@@ -36,7 +36,7 @@ function addExpense(e){
             newele.appendChild(dltbtn)
             dltbtn.addEventListener('click', () => {
                 dltbtn.parentElement.remove();
-                axios.delete(`http://localhost:3000/expense/deletebyid/${data.id}`);
+                axios.delete(`http://localhost:3000/expense/deletebyid/${data.id}`,{headers: {"Authorization" : token}});
             })
             
             ul.appendChild(newele);
@@ -48,7 +48,8 @@ window.addEventListener('DOMContentLoaded', backendExpenses);
 
 async function backendExpenses(){
     try {
-        let expenses = await axios.get('http://localhost:3000/expense/getall');
+        
+        let expenses = await axios.get('http://localhost:3000/expense/getall',{headers: {"Authorization" : token}});
         let res = expenses.data;
         res.forEach((exp) => {
             let newele = document.createElement("li");
@@ -60,7 +61,7 @@ async function backendExpenses(){
             newele.appendChild(dltbtn)
             dltbtn.addEventListener('click', () => {
                 dltbtn.parentElement.remove();
-                axios.delete(`http://localhost:3000/expense/deletebyid/${exp.id}`);
+                axios.delete(`http://localhost:3000/expense/deletebyid/${exp.id}`,{headers: {"Authorization" : token}});
             })
             
             ul.appendChild(newele);
