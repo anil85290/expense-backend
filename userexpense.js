@@ -204,7 +204,7 @@ async function showLeaderboard(leaderboardListElement) {
             listItem.className = 'flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0';
             listItem.innerHTML = `
                 <span class="font-medium">${index + 1}. ${user.name}</span>
-                <span class="text-gray-700">Total Expense: ₹${user.total_cost}</span>
+                <span class="text-gray-700">Total Expense: ₹${user.totalExpenses}</span>
             `;
             leaderboardListElement.appendChild(listItem);
         });
