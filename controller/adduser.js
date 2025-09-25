@@ -25,8 +25,8 @@ const postUser = async (req, res) => {
     }
 };
 
-const generateAccessToken = (id, user) => {
-    return jwt.sign({userID: id, name: user}, 'u8D3j#6fKq%2Rz!9sYw@5Lp^1Xv*8Nc3')
+const generateAccessToken = (id, user, isPremiumUser) => {
+    return jwt.sign({userID: id, name: user, isPremiumUser}, 'u8D3j#6fKq%2Rz!9sYw@5Lp^1Xv*8Nc3')
 };
 
 const login = async (req, res) => {
@@ -37,11 +37,9 @@ const login = async (req, res) => {
         const user = await User.findOne({ where: { email } });
         
         if (user) {
-            console.log(user.password);
             const isMatch = await bcrypt.compare(password, user.password);
             if (isMatch) {
-                const token = generateAccessToken(user.id, user.name);
-                console.log(token);
+                const token = generateAccessToken(user.id, user.name, user.isPremiumUser);
                 return res.status(200).json({ token });
             } else {
                 return res.status(400).json({ message: 'Password is incorrect' });

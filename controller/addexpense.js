@@ -21,8 +21,16 @@ exports.postExpense = async (req, res) => {
 exports.getall = async (req, res) => {
     try {
         let result = await Expense.findAll({where: {userId: req.user.id}});
-        console.log(result);
-        res.send(result);
+        console.log("===========>>>>>>>" + req.user.isPremiumUser);
+        if(req.user.isPremiumUser == true){
+            res.json({
+                exdata: result,
+                ispremiumUser: true
+            })
+        }else{
+            res.send(result);
+        }
+        
     } catch (error) {
         console.log(error);
         

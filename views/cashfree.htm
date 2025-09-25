@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashfree Checkout Integration</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- Axios CDN -->
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-md text-center">
+        <h1 class="text-2xl font-bold mb-4">Cashfree Checkout Integration</h1>
+        <p class="mb-4">Click below to open the checkout page in the current tab</p>
+        <button id="renderBtn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition duration-200">
+            Pay Now
+        </button>
+    </div>
+    <script>
+        const cashfree = Cashfree({
+                    mode: "sandbox",
+                });
+                document.getElementById("renderBtn").addEventListener("click", async () => {
+                    try {
+                        const res = await axios.post('http://localhost:3000/premium/pay');
+                        const data = res.data
+                        const paymentSessionId = data.paymentSessionId;
+
+                        let checkoutOptions = {
+                            paymentSessionId: paymentSessionId,
+
+                            redirectTarget: "_self"
+                        };
+
+                        await cashfree.checkout(checkoutOptions);
+                    } catch (error) {
+                        console.log(error);
+                    }
+                                
+                });
+    </script>
+</body>
+</html>
