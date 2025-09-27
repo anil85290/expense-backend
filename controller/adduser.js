@@ -26,7 +26,7 @@ const postUser = async (req, res) => {
 };
 
 const generateAccessToken = (id, user, isPremiumUser) => {
-    return jwt.sign({userID: id, name: user, isPremiumUser}, 'u8D3j#6fKq%2Rz!9sYw@5Lp^1Xv*8Nc3')
+    return jwt.sign({userID: id, name: user, isPremiumUser}, process.env.jwtSecretKey)
 };
 
 const login = async (req, res) => {

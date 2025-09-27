@@ -22,9 +22,6 @@ function saveUser(e) {
     axios.post("http://localhost:3000/user/signup", obj)
         .then((result) => {
             console.log(result);
-            // if(result.status === 201){
-
-            // }
             resetForm();
         })
         .catch((err) => {
