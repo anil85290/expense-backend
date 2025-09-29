@@ -4,7 +4,9 @@ const forgotPassController = require('../controller/forgotPass');
 
 router.post('/pass', forgotPassController.forgotPass);
 
+router.post('/updatepassword/:resetpasswordid', forgotPassController.updatePassword);
 
+router.get('/resetpassword/:id', forgotPassController.resetPassword)
 
 
 

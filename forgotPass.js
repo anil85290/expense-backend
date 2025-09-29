@@ -12,7 +12,8 @@ form.addEventListener('submit', (e) => {
     let obj = {email: userEmail.value.trim()};
     axios.post("http://localhost:3000/forgotPass/pass", obj).then((result) => {
         console.log(result.data);
-        alert(result.data.emailResponse);
+        alert(result.data.message);
+        window.location.href = './login.htm'
         resetForm();
     }).catch((err) => {
         console.log(err);
