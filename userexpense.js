@@ -67,13 +67,21 @@ function showPremiumUser() {
     const mainContentArea = document.getElementById('mainContentArea');
 
     const leaderboardContainer = document.createElement('div');
-    leaderboardContainer.className = 'mt-6';
+    leaderboardContainer.className = 'mt-6 flex flex-col space-y-2'; // Added flex-col and space-y-2 for spacing
 
     const showLeaderboardBtn = document.createElement('button');
     showLeaderboardBtn.id = 'showLeaderboardBtn';
     showLeaderboardBtn.className = 'w-full bg-purple-500 text-white p-2 rounded-md hover:bg-purple-600';
     showLeaderboardBtn.innerText = 'Show Leaderboard';
     leaderboardContainer.appendChild(showLeaderboardBtn);
+
+    // --- New: Download Expenses Button ---
+    const downloadExpensesBtn = document.createElement('button');
+    downloadExpensesBtn.id = 'downloadExpensesBtn';
+    downloadExpensesBtn.className = 'w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600';
+    downloadExpensesBtn.innerText = 'Download Expenses';
+    leaderboardContainer.appendChild(downloadExpensesBtn);
+    // --- End New ---
 
     const leaderboardDisplay = document.createElement('div');
     leaderboardDisplay.id = 'leaderboardDisplay';
@@ -99,6 +107,10 @@ function showPremiumUser() {
             showLeaderboard(leaderboardList);
         }
     });
+
+    // --- New: Event Listener for Download Button ---
+    downloadExpensesBtn.addEventListener('click', downloadExpenses);
+    // --- End New ---
 };
 
 document.getElementById('logoutButton').addEventListener('click', () => {
@@ -189,7 +201,7 @@ function resetForm() {
 async function showLeaderboard(leaderboardListElement) {
     try {
         const response = await axios.get('http://localhost:3000/premiumFeature/showLeaderBoard');
-        
+
         const leaderboardData = response.data;
         console.log(leaderboardData);
         leaderboardListElement.innerHTML = '';
@@ -214,5 +226,49 @@ async function showLeaderboard(leaderboardListElement) {
     }
 }
 
+// --- New: Download Expenses Function ---
+async function downloadExpenses() {
+    try {
+        const response = await axios.get('http://localhost:3000/premiumFeature/download', {
+            headers: { "Authorization": token },
+            responseType: 'blob' // Important: to handle binary data (file)
+        });
 
+        // Create a blob from the response data
+        const blob = new Blob([response.data], { type: response.headers['content-type'] });
 
+        // Create a temporary URL for the blob
+        const url = window.URL.createObjectURL(blob);
+
+        // Create a temporary link element
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+
+        // Extract filename from Content-Disposition header if available, otherwise use a default
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'expenses.csv'; // Default filename
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1];
+            }
+        }
+        a.download = filename;
+
+        // Append to body and click it to trigger download
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up: remove the link and revoke the URL
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        alert('Your expenses have been downloaded!');
+
+    } catch (error) {
+        console.error('Error downloading expenses:', error);
+        alert('Failed to download expenses. Please try again later.');
+    }
+}
+// --- End New ---
