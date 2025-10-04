@@ -1,274 +1,367 @@
 const form = document.getElementById('expenseForm');
-const amount = document.getElementById('amount');
-const desc = document.getElementById('description');
-const category = document.getElementById('category');
-const ul = document.getElementById('expenseList');
-const token = localStorage.getItem('token')
+const amountInput = document.getElementById('amount');
+const descInput = document.getElementById('description');
+const categoryInput = document.getElementById('category');
+const expenseListUl = document.getElementById('expenseList');
+const token = localStorage.getItem('token');
 const premiumBtn = document.getElementById('premium');
+const mainContentArea = document.getElementById('mainContentArea');
+const logoutButton = document.getElementById('logoutButton');
+
+const itemsPerPageSelect = document.getElementById('itemsPerPage');
+const prevPageBtn = document.getElementById('prevPage');
+const nextPageBtn = document.getElementById('nextPage');
+const lastPageBtn = document.getElementById('lastPage');
+const pageInfoSpan = document.getElementById('pageInfo');
+
 const cashfree = Cashfree({
     mode: "sandbox",
 });
-premiumBtn.addEventListener('click', async () => {
-    try {
-        const res = await axios.post('http://localhost:3000/premium/pay', null, { headers: { "Authorization": token } });
-        const data = res.data
-        console.log(data);
-        const paymentSessionId = data.paymentSessionId;
-        const orderId = data.orderId
 
-        let checkoutOptions = {
-            paymentSessionId: paymentSessionId,
+let currentPage = 1;
+let itemsPerPage = localStorage.getItem('itemsPerPage') ? parseInt(localStorage.getItem('itemsPerPage')) : 5;
+let totalPages = 1;
 
-            redirectTarget: "_modal"
-        };
+if (itemsPerPageSelect) {
+    itemsPerPageSelect.value = itemsPerPage;
+}
 
-        const result = await cashfree.checkout(checkoutOptions);
-        if (result.error) {
-            // This will be true whenever user clicks on close icon inside the modal or any error happens during the payment
-            console.log("User has closed the popup or there is some payment error, Check for Payment Status");
-            console.log(result.error);
-        }
-        if (result.redirect) {
-            // This will be true when the payment redirection page couldnt be opened in the same window
-            // This is an exceptional case only when the page is opened inside an inAppBrowser
-            // In this case the customer will be redirected to return url once payment is completed
-            console.log("Payment will be redirected");
-        }
-        if (result.paymentDetails) {
-            // This will be called whenever the payment is completed irrespective of transaction status
-            console.log("Payment has been completed, Check for Payment Status");
-            console.log(result.paymentDetails.paymentMessage);
-            const res = await axios.get(`http://localhost:3000/premium/getPaymentStatus/${orderId}`, { headers: { "Authorization": token } });
-            if (res.data.paymentStatus == 'Succcessful') {
-                alert('your payment is ' + res.data.paymentStatus)
-                showPremiumUser();
-            } else {
-                alert('your payment has ' + res.data.paymentStatus)
+
+if (premiumBtn) {
+    premiumBtn.addEventListener('click', async () => {
+        try {
+            const res = await axios.post('http://localhost:3000/premium/pay', null, { headers: { "Authorization": token } });
+            const data = res.data;
+            const paymentSessionId = data.paymentSessionId;
+            const orderId = data.orderId;
+
+            let checkoutOptions = {
+                paymentSessionId: paymentSessionId,
+                redirectTarget: "_modal"
+            };
+
+            const result = await cashfree.checkout(checkoutOptions);
+            if (result.error) {
+                console.log("User has closed the popup or there is some payment error, Check for Payment Status");
+                console.log(result.error);
             }
-
+            if (result.redirect) {
+                console.log("Payment will be redirected");
+            }
+            if (result.paymentDetails) {
+                console.log("Payment has been completed, Check for Payment Status");
+                console.log(result.paymentDetails.paymentMessage);
+                const res = await axios.get(`http://localhost:3000/premium/getPaymentStatus/${orderId}`, { headers: { "Authorization": token } });
+                if (res.data.paymentStatus == 'Successful') {
+                    alert('Your payment is ' + res.data.paymentStatus);
+                    showPremiumUser();
+                    fetchExpenses();
+                } else {
+                    alert('Your payment has ' + res.data.paymentStatus);
+                }
+            }
+        } catch (error) {
+            console.error('Error during premium payment:', error);
+            alert('Failed to process premium payment. Please try again.');
         }
-    } catch (error) {
-        console.log(error);
-    }
-});
+    });
+}
+
+if (logoutButton) {
+    logoutButton.addEventListener('click', () => {
+        alert('Logging out...');
+        localStorage.removeItem('token');
+        window.location.href = './login.htm';
+    });
+}
+
+if (form) {
+    form.addEventListener('submit', addExpense);
+}
+
+if (itemsPerPageSelect) {
+    itemsPerPageSelect.addEventListener('change', (e) => {
+        itemsPerPage = parseInt(e.target.value);
+        localStorage.setItem('itemsPerPage', itemsPerPage);
+        currentPage = 1;
+        fetchExpenses();
+    });
+}
+
+if (prevPageBtn) {
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchExpenses();
+        }
+    });
+}
+
+if (nextPageBtn) {
+    nextPageBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            fetchExpenses();
+        }
+    });
+}
+
+if (lastPageBtn) {
+    lastPageBtn.addEventListener('click', () => {
+        currentPage = totalPages;
+        fetchExpenses();
+    });
+}
+
+// --- Functions ---
 
 function showPremiumUser() {
     const premiumMessage = document.createElement('div');
     premiumMessage.id = 'premiumMessage';
     premiumMessage.className = 'bg-green-500 text-white p-4 text-center';
     premiumMessage.innerText = 'You are a premium user! Enjoy your benefits!';
-
-    // Insert the message at the top of the page
     document.body.insertBefore(premiumMessage, document.body.firstChild);
     if (premiumBtn) {
         premiumBtn.remove();
     }
 
-    const mainContentArea = document.getElementById('mainContentArea');
+    if (mainContentArea) {
+        const leaderboardContainer = document.createElement('div');
+        leaderboardContainer.className = 'mt-6 flex flex-col space-y-2';
 
-    const leaderboardContainer = document.createElement('div');
-    leaderboardContainer.className = 'mt-6 flex flex-col space-y-2'; // Added flex-col and space-y-2 for spacing
+        const showLeaderboardBtn = document.createElement('button');
+        showLeaderboardBtn.id = 'showLeaderboardBtn';
+        showLeaderboardBtn.className = 'w-full bg-purple-500 text-white p-2 rounded-md hover:bg-purple-600';
+        showLeaderboardBtn.innerText = 'Show Leaderboard';
+        leaderboardContainer.appendChild(showLeaderboardBtn);
 
-    const showLeaderboardBtn = document.createElement('button');
-    showLeaderboardBtn.id = 'showLeaderboardBtn';
-    showLeaderboardBtn.className = 'w-full bg-purple-500 text-white p-2 rounded-md hover:bg-purple-600';
-    showLeaderboardBtn.innerText = 'Show Leaderboard';
-    leaderboardContainer.appendChild(showLeaderboardBtn);
+        const downloadExpensesBtn = document.createElement('button');
+        downloadExpensesBtn.id = 'downloadExpensesBtn';
+        downloadExpensesBtn.className = 'w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600';
+        downloadExpensesBtn.innerText = 'Download Expenses';
+        leaderboardContainer.appendChild(downloadExpensesBtn);
 
-    // --- New: Download Expenses Button ---
-    const downloadExpensesBtn = document.createElement('button');
-    downloadExpensesBtn.id = 'downloadExpensesBtn';
-    downloadExpensesBtn.className = 'w-full bg-indigo-500 text-white p-2 rounded-md hover:bg-indigo-600';
-    downloadExpensesBtn.innerText = 'Download Expenses';
-    leaderboardContainer.appendChild(downloadExpensesBtn);
-    // --- End New ---
+        const leaderboardDisplay = document.createElement('div');
+        leaderboardDisplay.id = 'leaderboardDisplay';
+        leaderboardDisplay.className = 'mt-4 p-4 border border-gray-200 rounded-md bg-gray-50 hidden';
+        leaderboardContainer.appendChild(leaderboardDisplay);
 
-    const leaderboardDisplay = document.createElement('div');
-    leaderboardDisplay.id = 'leaderboardDisplay';
-    leaderboardDisplay.className = 'mt-4 p-4 border border-gray-200 rounded-md bg-gray-50 hidden';
-    leaderboardContainer.appendChild(leaderboardDisplay);
+        const leaderboardTitle = document.createElement('h4');
+        leaderboardTitle.className = 'text-md font-semibold mb-2';
+        leaderboardTitle.innerText = 'Leaderboard';
+        leaderboardDisplay.appendChild(leaderboardTitle);
 
-    const leaderboardTitle = document.createElement('h4');
-    leaderboardTitle.className = 'text-md font-semibold mb-2';
-    leaderboardTitle.innerText = 'Leaderboard';
-    leaderboardDisplay.appendChild(leaderboardTitle);
+        const leaderboardList = document.createElement('ul');
+        leaderboardList.id = 'leaderboardList';
+        leaderboardList.className = 'list-none text-gray-800';
+        leaderboardDisplay.appendChild(leaderboardList);
 
-    const leaderboardList = document.createElement('ul');
-    leaderboardList.id = 'leaderboardList';
-    leaderboardList.className = 'list-none text-gray-800';
-    leaderboardDisplay.appendChild(leaderboardList);
+        mainContentArea.appendChild(leaderboardContainer);
 
-    mainContentArea.appendChild(leaderboardContainer);
-
-    showLeaderboardBtn.addEventListener('click', () => {
-        // Toggle visibility of the leaderboard display area
-        leaderboardDisplay.classList.toggle('hidden');
-        if (!leaderboardDisplay.classList.contains('hidden')) {
-            showLeaderboard(leaderboardList);
-        }
-    });
-
-    // --- New: Event Listener for Download Button ---
-    downloadExpensesBtn.addEventListener('click', downloadExpenses);
-    // --- End New ---
-};
-
-document.getElementById('logoutButton').addEventListener('click', () => {
-    alert('Logging out...');
-    window.location.href = './login.htm'
-});
-
-form.addEventListener('submit', addExpense);
-
-function addExpense(e) {
-    e.preventDefault();
-    if (amount.value.trim() === "" || desc.value.trim() === "" || category.value.trim() === "") {
-        alert("Please fill in all fields.");
-        return;
-    }
-    let obj = {
-        amount: amount.value.trim(),
-        description: desc.value.trim(),
-        category: category.value.trim()
-    }
-    axios.post("http://localhost:3000/expense/save", obj, { headers: { "Authorization": token } })
-        .then((result) => {
-            showExpenses(result.data);
-            resetForm();
-        })
-        .catch((err) => {
-            console.log(err);
+        showLeaderboardBtn.addEventListener('click', () => {
+            leaderboardDisplay.classList.toggle('hidden');
+            if (!leaderboardDisplay.classList.contains('hidden')) {
+                showLeaderboard(leaderboardList);
+            }
         });
-};
+
+        downloadExpensesBtn.addEventListener('click', downloadExpenses);
+    }
+}
+
+async function addExpense(e) {
+    e.preventDefault();
+    try {
+        if (amountInput.value.trim() === "" || descInput.value.trim() === "" || categoryInput.value.trim() === "") {
+            alert("Please fill in all fields.");
+            return;
+        }
+        let obj = {
+            amount: amountInput.value.trim(),
+            description: descInput.value.trim(),
+            category: categoryInput.value.trim()
+        };
+        await axios.post("http://localhost:3000/expense/save", obj, { headers: { "Authorization": token } });
+        resetForm();
+        currentPage = 1;
+        fetchExpenses();
+    } catch (error) {
+        console.error('Error adding expense:', error);
+        alert('Failed to add expense. Please try again.');
+    }
+}
+
+async function fetchExpenses() {
+    try {
+        const response = await axios.get(`http://localhost:3000/expense/getall?page=${currentPage}&limit=${itemsPerPage}`, {
+            headers: { "Authorization": token }
+        });
+
+        const { data, pagination, ispremiumUser } = response.data;
+
+        if (expenseListUl) {
+            expenseListUl.innerHTML = '';
+        }
+
+        currentPage = pagination.currentPage;
+        totalPages = pagination.totalPages;
+        if (ispremiumUser && !document.getElementById('premiumMessage')) {
+            showPremiumUser();
+        }
+
+        if (data.length === 0) {
+            if (expenseListUl) {
+                expenseListUl.innerHTML = '<li class="text-gray-500 p-2">No expenses to display for this page.</li>';
+            }
+        } else {
+            data.forEach((exp) => {
+                showExpenses(exp);
+            });
+        }
+        updatePaginationControls();
+
+    } catch (error) {
+        console.error('Error fetching expenses:', error);
+        if (expenseListUl) {
+            expenseListUl.innerHTML = '<li class="text-red-500 p-2">Failed to load expenses. Please try again.</li>';
+        }
+        updatePaginationControls();
+    }
+}
 
 function showExpenses(data) {
     let newele = document.createElement("li");
-    newele.className = "flex justify-between items-center p-2 border-b border-gray-200";
-    newele.innerText = `Expense amount: ${data.amount}-${data.category}-${data.description}`;
-    let dltbtn = document.createElement('button');
-    dltbtn.innerText = 'Delete'
-    dltbtn.className = 'bg-red-600 text-white font-bold py-2 px-4 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50';
-    newele.appendChild(dltbtn)
-    dltbtn.addEventListener('click', () => {
-        dltbtn.parentElement.remove();
-        axios.delete(`http://localhost:3000/expense/deletebyid/${data.id}`, { headers: { "Authorization": token } });
-    })
+    newele.className = "grid grid-cols-5 gap-2 items-center p-2 border-b border-gray-200";
+    const expenseDate = new Date(data.createdAt).toLocaleDateString();
 
-    ul.appendChild(newele);
-};
+    let amountSpan = document.createElement('span');
+    amountSpan.className = 'col-span-1';
+    amountSpan.innerText = `₹${data.amount}`;
 
-window.addEventListener('DOMContentLoaded', backendExpenses);
+    let categorySpan = document.createElement('span');
+    categorySpan.className = 'col-span-1';
+    categorySpan.innerText = data.category;
 
-async function backendExpenses() {
+    let descSpan = document.createElement('span');
+    descSpan.className = 'col-span-1';
+    descSpan.innerText = data.description;
+
+    let dateSpan = document.createElement('span');
+    dateSpan.className = 'col-span-1 text-sm text-gray-500';
+    dateSpan.innerText = expenseDate;
+
+    let deleteBtn = document.createElement('button');
+    deleteBtn.className = 'col-span-1 bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 justify-self-end';
+    deleteBtn.innerText = 'Delete';
+    deleteBtn.onclick = () => deleteExpense(data.id);
+
+    newele.appendChild(amountSpan);
+    newele.appendChild(categorySpan);
+    newele.appendChild(descSpan);
+    newele.appendChild(dateSpan);
+    newele.appendChild(deleteBtn);
+
+    expenseListUl.appendChild(newele);
+}
+
+async function deleteExpense(id) {
     try {
-
-        let expenses = await axios.get('http://localhost:3000/expense/getall', { headers: { "Authorization": token } });
-        console.log(expenses);
-        let res;
-        if (expenses.data.ispremiumUser == true) {
-            showPremiumUser();
-            res = expenses.data.exdata
-        } else {
-            res = expenses.data
-        }
-        res.forEach((exp) => {
-            let newele = document.createElement("li");
-            newele.className = "flex justify-between items-center p-2 border-b border-gray-200";
-            newele.innerText = `Expense amount: ${exp.amount}-${exp.category}-${exp.description}`;
-            let dltbtn = document.createElement('button');
-            dltbtn.innerText = 'Delete'
-            dltbtn.className = 'bg-red-600 text-white font-bold py-2 px-4 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50';
-            newele.appendChild(dltbtn)
-            dltbtn.addEventListener('click', () => {
-                dltbtn.parentElement.remove();
-                axios.delete(`http://localhost:3000/expense/deletebyid/${exp.id}`, { headers: { "Authorization": token } });
-            })
-
-            ul.appendChild(newele);
-        });
+        await axios.delete(`http://localhost:3000/expense/delete/${id}`, { headers: { "Authorization": token } });
+        fetchExpenses();
     } catch (error) {
-        console.log(error);
+        console.error('Error deleting expense:', error);
+        alert('Failed to delete expense. Please try again.');
     }
-};
+}
 
 function resetForm() {
-    amount.value = "";
-    desc.value = "";
-    category.value = "";
+    amountInput.value = '';
+    descInput.value = '';
+    categoryInput.value = '';
+}
+
+function updatePaginationControls() {
+    if (pageInfoSpan) {
+        pageInfoSpan.innerText = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    if (prevPageBtn) {
+        prevPageBtn.disabled = currentPage === 1;
+        prevPageBtn.classList.toggle('opacity-50', currentPage === 1);
+        prevPageBtn.classList.toggle('cursor-not-allowed', currentPage === 1);
+    }
+
+    if (nextPageBtn) {
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        nextPageBtn.classList.toggle('opacity-50', currentPage === totalPages || totalPages === 0);
+        nextPageBtn.classList.toggle('cursor-not-allowed', currentPage === totalPages || totalPages === 0);
+    }
+
+    if (lastPageBtn) {
+        lastPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        lastPageBtn.classList.toggle('opacity-50', currentPage === totalPages || totalPages === 0);
+        lastPageBtn.classList.toggle('cursor-not-allowed', currentPage === totalPages || totalPages === 0);
+    }
 }
 
 
 async function showLeaderboard(leaderboardListElement) {
     try {
-        const response = await axios.get('http://localhost:3000/premiumFeature/showLeaderBoard');
+        const res = await axios.get('http://localhost:3000/premiumFeature/showLeaderBoard', { headers: { "Authorization": token } });
+        const leaderboardData = res.data;
 
-        const leaderboardData = response.data;
-        console.log(leaderboardData);
         leaderboardListElement.innerHTML = '';
 
         if (leaderboardData.length === 0) {
-            leaderboardListElement.innerHTML = '<li class="text-gray-600">No users on the leaderboard yet.</li>';
+            leaderboardListElement.innerHTML = '<li class="p-2">No users on the leaderboard yet.</li>';
             return;
         }
 
         leaderboardData.forEach((user, index) => {
             const listItem = document.createElement('li');
-            listItem.className = 'flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0';
+            listItem.className = 'p-2 border-b border-gray-100 last:border-b-0 flex justify-between items-center';
             listItem.innerHTML = `
-                <span class="font-medium">${index + 1}. ${user.name}</span>
-                <span class="text-gray-700">Total Expense: ₹${user.totalExpenses}</span>
+                <span>${index + 1}. ${user.name}</span>
+                <span class="font-semibold text-gray-900">₹${user.totalExpenses || 0}</span>
             `;
             leaderboardListElement.appendChild(listItem);
         });
+
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        leaderboardListElement.innerHTML = '<li class="text-red-500">Failed to load leaderboard.</li>';
+        leaderboardListElement.innerHTML = '<li class="p-2 text-red-500">Failed to load leaderboard.</li>';
     }
 }
 
-// --- New: Download Expenses Function ---
 async function downloadExpenses() {
     try {
         const response = await axios.get('http://localhost:3000/premiumFeature/download', {
             headers: { "Authorization": token },
-            responseType: 'blob' // Important: to handle binary data (file)
+            responseType: 'blob'
         });
 
-        // Create a blob from the response data
-        const blob = new Blob([response.data], { type: response.headers['content-type'] });
-
-        // Create a temporary URL for the blob
-        const url = window.URL.createObjectURL(blob);
-
-        // Create a temporary link element
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-
-        // Extract filename from Content-Disposition header if available, otherwise use a default
-        const contentDisposition = response.headers['content-disposition'];
-        let filename = 'expenses.csv'; // Default filename
-        if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-            if (filenameMatch && filenameMatch[1]) {
-                filename = filenameMatch[1];
-            }
-        }
-        a.download = filename;
-
-        // Append to body and click it to trigger download
-        document.body.appendChild(a);
-        a.click();
-
-        // Clean up: remove the link and revoke the URL
-        document.body.removeChild(a);
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'expenses.csv');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
         window.URL.revokeObjectURL(url);
 
-        alert('Your expenses have been downloaded!');
+        alert('Expenses downloaded successfully!');
 
     } catch (error) {
         console.error('Error downloading expenses:', error);
-        alert('Failed to download expenses. Please try again later.');
+        alert('Failed to download expenses. Please try again.');
     }
 }
-// --- End New ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (!token) {
+        window.location.href = './login.htm';
+        return;
+    }
+    fetchExpenses();
+});
+
