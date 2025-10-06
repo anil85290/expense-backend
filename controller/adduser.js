@@ -26,7 +26,7 @@ const postUser = async (req, res) => {
 };
 
 const generateAccessToken = (id, user, isPremiumUser) => {
-    return jwt.sign({userID: id, name: user, isPremiumUser}, process.env.jwtSecretKey)
+    return jwt.sign({userID: id, name: user, isPremiumUser}, process.env.JWT_SECRET_KEY)
 };
 
 const login = async (req, res) => {
@@ -58,4 +58,3 @@ module.exports = {
     login,
     generateAccessToken
 };
-

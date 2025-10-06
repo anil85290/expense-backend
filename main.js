@@ -16,7 +16,6 @@ const expenseroutes = require('./routes/expenseRoute')
 const premiumroutes = require('./routes/premium');
 const premiumFeatureRoutes = require('./routes/premiumfeatures');
 const forgotPassRoutes = require('./routes/forgotPass');
-const { FORCE } = require('sequelize/lib/index-hints');
 
 app.use('/user', userroutes);
 app.use('/expense', expenseroutes);
@@ -33,10 +32,14 @@ Payment.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(Forgotpassword);
 Forgotpassword.belongsTo(User);
 
-sequelize.sync().then((result) => {
-    //console.log(result);
-    app.listen(3000);
+// sequelize.sync().then((result) => {
+//     //console.log(result);
     
-}).catch((err) => {
-    console.log(err);
+    
+// }).catch((err) => {
+//     console.log(err);
+// });
+
+app.listen(3000, () => {
+    console.log('port ====> 3000');
 });
